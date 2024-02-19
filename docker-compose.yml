@@ -33,6 +33,7 @@ services:
   # Backend service
   fineract-server:
     image: openmf/fineract:1.9.0
+    restart: always
     volumes:
       - ./fineract-server/data:/data
     healthcheck:
