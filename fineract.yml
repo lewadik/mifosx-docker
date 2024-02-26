@@ -1,0 +1,98 @@
+type: install
+version: 1.7
+id: docker-engine-ce
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/docker/clustering-1.1/docker-engine
+description:
+  text: https://raw.githubusercontent.com/lewadik/mifosx-docker/main/text/description.md
+  short: Automatic Installation of Docker Engine (CE) as a Standalone or Worker Node
+categories:
+  - apps/dev-and-admin-tools
+
+logo: https://fineract.apache.org/images/apache-fineract-logo.png
+name: Apache Fineract 
+targetRegions:
+  type: vz7
+
+globals:                                                                                                                                                                                                                         
+  startPage: http://${env.domain}/   
+ 
+settings: 
+  fields:  
+  - type: nodetags      
+    nodeType: dockerengine
+    caption: Docker Version
+    name: tag  
+    width: 100    
+  - name: mode
+    type: radio-fieldset
+    values:
+      clean: Create a clean standalone engine
+      deploy: Deploy containers from compose.yml
+    default: deploy
+    showIf:
+      deploy:
+      - name: repo
+        type: string
+        caption: Compose Repo
+        default: https://github.com/lewadik/mifosx-docker.git
+        required: false
+        vtype: url
+      - name: role
+        type: string
+        default: cp
+        inputType: hidden
+      clean:
+      - name: portainer
+        type: checkbox
+        caption: Install <a href='https://portainer.io' target='_blank'>Portainer UI</a> and Let's Encrypt SSL certificates
+        value: false
+      - name: role
+        type: string
+        default: cp
+        inputType: hidden
+  
+nodes:
+- count: 1
+  cloudlets: 16
+  nodeType: dockerengine
+  tag: ${settings.tag}
+  nodeGroup: ${settings.role}
+  displayName: OpenMF Fineract
+  env:
+    JELASTIC_EXPOSE: false
+ssl: true
+
+skipNodeEmails: true
+    
+onInstall:
+  - deploy
+  - setProtocol
+  
+onAfterScaleOut[${settings.role}]: connect-to-swarm
+
+actions:
+  deploy:
+    if ('${settings.mode}' == 'deploy'):
+      install:
+        jps: ../addons/docker-deploy.jps
+        settings:
+          repo: ${settings.repo}
+          type: compose
+        
+  setProtocol:
+    - script: |
+        return {
+          result:0,
+          ssl: jelastic.billing.account.GetQuotas('environment.jelasticssl.enabled').array[0].value
+        }
+    - if (${response.ssl} || ${settings.le-addon:false}):
+        setGlobals:
+          PROTOCOL: https
+		  
+startPage: ${globals.startPage}
+ 
+success: |
+  Web UI is available here: **[https://${env.domain}/](https://${env.domain}/)**
+
+  * Username: **mifos**
+  * Password: **password**
